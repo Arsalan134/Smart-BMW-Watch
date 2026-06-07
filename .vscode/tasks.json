@@ -1,0 +1,54 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "PIO Upload",
+			"type": "shell",
+			"command": "C:\\Users\\Arsalan\\.platformio\\penv\\Scripts\\platformio.exe run -t upload --upload-port COM6",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "PIO Upload Watch",
+			"type": "shell",
+			"command": "C:\\Users\\Arsalan\\.platformio\\penv\\Scripts\\platformio.exe run -t upload --upload-port COM6",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "PIO Upload Watch",
+			"type": "shell",
+			"command": "C:\\Users\\Arsalan\\.platformio\\penv\\Scripts\\platformio.exe run -t upload --upload-port COM6",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "PIO Upload Watch",
+			"type": "shell",
+			"command": "C:\\Users\\Arsalan\\.platformio\\penv\\Scripts\\platformio.exe run -t upload --upload-port COM6",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "PIO Upload Watch",
+			"type": "shell",
+			"command": "C:\\Users\\Arsalan\\.platformio\\penv\\Scripts\\platformio.exe run -t upload --upload-port COM6",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "PIO Upload Watch",
+			"type": "shell",
+			"command": "C:\\Users\\Arsalan\\.platformio\\penv\\Scripts\\platformio.exe run -t upload --upload-port COM6",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "PIO Upload Watch",
+			"type": "shell",
+			"command": "C:\\Users\\Arsalan\\.platformio\\penv\\Scripts\\platformio.exe run -t upload --upload-port COM6",
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}
