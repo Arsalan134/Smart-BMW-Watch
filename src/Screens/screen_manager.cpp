@@ -26,7 +26,7 @@ static const Screen screens[SCREEN_COUNT] = {
 };
 
 // --- State ---
-static ScreenID current_screen = SCREEN_EMPTY;
+static ScreenID current_screen = SCREEN_WATCHFACE;
 static lv_obj_t* screen_obj = NULL;
 
 // --- Helper: add title label from registry name ---
@@ -66,6 +66,9 @@ static void do_screen_transition(ScreenID new_id) {
   // Animate transition (slide left)
   lv_screen_load_anim(new_scr, LV_SCR_LOAD_ANIM_MOVE_LEFT, ANIM_DURATION_MS, 0, true);
 
+  // or use this.  Use direct screen load for stability on this panel path.
+  // lv_screen_load(new_scr);
+
   screen_obj = new_scr;
   current_screen = new_id;
   Serial.printf("Screen -> %s (%d/%d)\n", screens[current_screen].name,
@@ -78,10 +81,10 @@ void screen_manager_init(void) {
   screen_obj = lv_obj_create(NULL);
   lv_obj_set_style_bg_color(screen_obj, COLOR_BLACK, 0);
   lv_obj_set_scrollbar_mode(screen_obj, LV_SCROLLBAR_MODE_OFF);
-  add_screen_title(screen_obj, screens[SCREEN_EMPTY].name);
-  screens[SCREEN_EMPTY].create(screen_obj);
+  add_screen_title(screen_obj, screens[SCREEN_WATCHFACE].name);
+  screens[SCREEN_WATCHFACE].create(screen_obj);
   lv_screen_load(screen_obj);
-  current_screen = SCREEN_EMPTY;
+  current_screen = SCREEN_WATCHFACE;
   Serial.println("Screen manager initialized");
 }
 

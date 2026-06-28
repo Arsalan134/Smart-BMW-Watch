@@ -21,6 +21,9 @@
 /* Display */
 #define LV_DPI_DEF 195
 
+/* Refresh period in ms. Lower = higher FPS (default is 33ms ~= 30 FPS). */
+#define LV_DEF_REFR_PERIOD 16
+
 #define LV_THEME_DEFAULT_DARK 1
 #define LV_USE_THEME_SIMPLE 1
 

@@ -6,7 +6,7 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include "audio_player.h"
+// #include "audio_player.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_lcd_panel_io.h"
@@ -36,13 +36,26 @@
 #define LCD_H_RES 360
 #define LCD_V_RES 360
 #define LCD_BIT_PER_PIXEL 16
-#define LVGL_BUF_LINES 40  // Number of lines per draw buffer
+#define LVGL_BUF_LINES 80  // Number of lines per draw buffer
 
 // --- Globals ---
 static esp_lcd_panel_handle_t panel_handle = NULL;
 static lv_display_t* lvgl_display = NULL;
 static uint8_t* lvgl_buf1 = NULL;
 static uint8_t* lvgl_buf2 = NULL;
+
+// Called by esp_lcd when a queued color transfer has finished (DMA done).
+static bool lcd_color_trans_done_cb(esp_lcd_panel_io_handle_t panel_io,
+                                    esp_lcd_panel_io_event_data_t* edata,
+                                    void* user_ctx) {
+  (void)panel_io;
+  (void)edata;
+  lv_display_t** disp_ptr = (lv_display_t**)user_ctx;
+  if (disp_ptr && *disp_ptr) {
+    lv_display_flush_ready(*disp_ptr);
+  }
+  return false;
+}
 
 // --- LVGL tick callback (LVGL 9.x) ---
 static uint32_t my_tick_get_cb(void) {
@@ -56,18 +69,26 @@ static void lvgl_flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px
   int x_end = area->x2 + 1;
   int y_end = area->y2 + 1;
 
-  esp_lcd_panel_draw_bitmap(panel_handle, x_start, y_start, x_end, y_end, px_map);
-  lv_display_flush_ready(disp);
+  esp_err_t ret = esp_lcd_panel_draw_bitmap(panel_handle, x_start, y_start, x_end, y_end, px_map);
+  if (ret != ESP_OK) {
+    // Transfer couldn't be queued; release LVGL so it doesn't stall.
+    lv_display_flush_ready(disp);
+  }
 }
 
 // --- Initialize QSPI bus and ST77916 panel ---
 static void lcd_init(void) {
   esp_err_t ret;
 
-  // Backlight OFF during init (use LEDC PWM like official Waveshare code)
-  ledcAttach(LCD_BL, 20000, 10);  // 20kHz, 10-bit resolution
-  ledcWrite(LCD_BL, 0);           // Off
-  Serial.println("Backlight PWM configured (off)");
+  auto backlight_on_failsafe = []() {
+    pinMode(LCD_BL, OUTPUT);
+    digitalWrite(LCD_BL, HIGH);
+  };
+
+  // Keep backlight OFF while panel starts up.
+  pinMode(LCD_BL, OUTPUT);
+  digitalWrite(LCD_BL, LOW);
+  Serial.println("Backlight GPIO configured (off)");
 
   // Hardware reset the panel first
   gpio_config_t rst_conf = {};
@@ -96,8 +117,10 @@ static void lcd_init(void) {
 
   ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
   Serial.printf("SPI bus init: %s (0x%x)\n", esp_err_to_name(ret), ret);
-  if (ret != ESP_OK)
+  if (ret != ESP_OK) {
+    backlight_on_failsafe();
     return;
+  }
 
   // Step 1: Create panel IO at 5MHz (slow speed for register read)
   esp_lcd_panel_io_handle_t io_handle = NULL;
@@ -106,14 +129,18 @@ static void lcd_init(void) {
   io_config.spi_mode = 0;
   io_config.pclk_hz = 5 * 1000 * 1000;  // 5MHz for register read
   io_config.trans_queue_depth = 10;
+  // io_config.on_color_trans_done = NULL;
+  // io_config.user_ctx = NULL;
   io_config.lcd_cmd_bits = 32;
   io_config.lcd_param_bits = 8;
-  io_config.flags.quad_mode = true;
+  io_config.flags.quad_mode = true;  // REQUIRED for ST77916 QSPI (4 data lines)
 
   ret = esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)SPI2_HOST, &io_config, &io_handle);
   Serial.printf("Panel IO create (5MHz): %s (0x%x)\n", esp_err_to_name(ret), ret);
-  if (ret != ESP_OK)
+  if (ret != ESP_OK) {
+    backlight_on_failsafe();
     return;
+  }
 
   // Step 2: Read register 0x04 to determine panel version
   uint8_t register_data[4] = {0};
@@ -123,23 +150,28 @@ static void lcd_init(void) {
   lcd_cmd |= (0x0B << 24);  // LCD_OPCODE_READ_CMD
 
   ret = esp_lcd_panel_io_rx_param(io_handle, lcd_cmd, register_data, sizeof(register_data));
-  if (ret == ESP_OK) {
+  bool reg_read_ok = (ret == ESP_OK);
+  if (reg_read_ok) {
     Serial.printf("Register 0x04: %02x %02x %02x %02x\n",
                   register_data[0], register_data[1], register_data[2], register_data[3]);
   } else {
-    Serial.printf("Register 0x04 read failed: %s - using version 1 as default\n", esp_err_to_name(ret));
+    Serial.printf("Register 0x04 read failed: %s - trying version 2 fallback\n", esp_err_to_name(ret));
   }
 
   // Delete slow IO handle
   esp_lcd_panel_io_del(io_handle);
   io_handle = NULL;
 
-  // Step 3: Recreate panel IO at full speed (40MHz)
+  // Step 3: Recreate panel IO at full runtime speed.
   io_config.pclk_hz = 40 * 1000 * 1000;
+  io_config.on_color_trans_done = lcd_color_trans_done_cb;
+  io_config.user_ctx = &lvgl_display;
   ret = esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)SPI2_HOST, &io_config, &io_handle);
   Serial.printf("Panel IO create (40MHz): %s (0x%x)\n", esp_err_to_name(ret), ret);
-  if (ret != ESP_OK)
+  if (ret != ESP_OK) {
+    backlight_on_failsafe();
     return;
+  }
 
   // Step 4: Select init sequence based on register read
   st77916_vendor_config_t vendor_config = {};
@@ -155,8 +187,13 @@ static void lcd_init(void) {
     vendor_config.init_cmds = vendor_specific_init_default;
     vendor_config.init_cmds_size = vendor_specific_init_default_size;
     Serial.println("Selected init: VERSION 1");
+  } else if (!reg_read_ok) {
+    // Register read can fail on some panel lots; version 2 is typically the safer fallback.
+    vendor_config.init_cmds = vendor_specific_init_version_2;
+    vendor_config.init_cmds_size = vendor_specific_init_version_2_size;
+    Serial.println("Selected init: VERSION 2 (register read failed)");
   } else {
-    // Unknown version - try version 1 (original default)
+    // Unknown signature - keep original default fallback.
     vendor_config.init_cmds = vendor_specific_init_default;
     vendor_config.init_cmds_size = vendor_specific_init_default_size;
     Serial.println("Selected init: VERSION 1 (unknown register, using default)");
@@ -171,13 +208,17 @@ static void lcd_init(void) {
 
   ret = esp_lcd_new_panel_st77916(io_handle, &panel_config, &panel_handle);
   Serial.printf("Panel create: %s (0x%x)\n", esp_err_to_name(ret), ret);
-  if (ret != ESP_OK)
+  if (ret != ESP_OK) {
+    backlight_on_failsafe();
     return;
+  }
 
   ret = esp_lcd_panel_init(panel_handle);
   Serial.printf("Panel init: %s (0x%x)\n", esp_err_to_name(ret), ret);
-  if (ret != ESP_OK)
+  if (ret != ESP_OK) {
+    backlight_on_failsafe();
     return;
+  }
 
   ret = esp_lcd_panel_disp_on_off(panel_handle, true);
   Serial.printf("Display ON: %s (0x%x)\n", esp_err_to_name(ret), ret);
@@ -196,8 +237,8 @@ static void lcd_init(void) {
   // Delay before backlight
   vTaskDelay(pdMS_TO_TICKS(50));
 
-  // Backlight ON via PWM (full brightness = 1023 for 10-bit)
-  ledcWrite(LCD_BL, 1023);
+  // Backlight ON (full brightness via GPIO).
+  backlight_on_failsafe();
   Serial.println("LCD init done, backlight ON");
 }
 
@@ -210,12 +251,21 @@ static void lvgl_init(void) {
   lvgl_display = lv_display_create(LCD_H_RES, LCD_V_RES);
   lv_display_set_flush_cb(lvgl_display, lvgl_flush_cb);
 
-  // Allocate draw buffers in PSRAM
+  // Allocate draw buffers
   size_t buf_size = LCD_H_RES * LVGL_BUF_LINES * LCD_BIT_PER_PIXEL / 8;
   lvgl_buf1 = (uint8_t*)heap_caps_malloc(buf_size, MALLOC_CAP_DMA);
   lvgl_buf2 = (uint8_t*)heap_caps_malloc(buf_size, MALLOC_CAP_DMA);
-  lv_display_set_buffers(lvgl_display, lvgl_buf1, lvgl_buf2, buf_size,
-                         LV_DISPLAY_RENDER_MODE_PARTIAL);
+
+  if (!lvgl_buf1) {
+    Serial.printf("LVGL buffer1 alloc failed (%u bytes)\n", (unsigned)buf_size);
+    return;
+  }
+
+  if (!lvgl_buf2) {
+    Serial.println("LVGL buffer2 alloc failed, using single-buffer mode");
+  }
+
+  lv_display_set_buffers(lvgl_display, lvgl_buf1, lvgl_buf2, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
 
   Serial.println("LVGL initialized");
 }
@@ -227,7 +277,7 @@ static void ntp_sync_task(void* param) {
   vTaskDelay(pdMS_TO_TICKS(100));
   WiFi.mode(WIFI_STA);
   vTaskDelay(pdMS_TO_TICKS(100));
-  WiFi.begin("WS168", "12345678");
+  WiFi.begin("Arso", "12345678");
 
   unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
@@ -304,6 +354,7 @@ void setup() {
 
   // Render first frame immediately so display shows content
   lv_timer_handler();
+  lv_refr_now(lvgl_display);
 
   // Initialize audio (SD card + I2S DAC) - non-critical, screen already visible
   // audio_player_init();
@@ -319,7 +370,8 @@ void loop() {
   imu_update();
   rtc_update();
   screen_manager_update();
-  audio_player_loop();
+  // audio_player_loop();
   lv_timer_handler();
-  delay(5);
+
+  delay(1);
 }
