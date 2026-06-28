@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-LV_IMG_DECLARE(back);
+LV_IMG_DECLARE(bmw_tacho);
 
 #ifdef __cplusplus
 }

@@ -32,7 +32,7 @@ static void set_needle_line_value(int32_t value) {
 static void apply_screen_empty_background(lv_obj_t* parent) {
   // Create full-screen background image
   lv_obj_t* bg_img = lv_image_create(parent);
-  lv_image_set_src(bg_img, &back);
+  lv_image_set_src(bg_img, &bmw_tacho);
   lv_obj_set_size(bg_img, DISPLAY_SIZE, DISPLAY_SIZE);
   lv_obj_center(bg_img);
   lv_obj_move_to_index(bg_img, 0);
@@ -63,17 +63,18 @@ void screen_empty_create(lv_obj_t* parent) {
   lv_obj_set_style_line_width(needle_line, 4, LV_PART_MAIN);
   lv_obj_set_style_line_rounded(needle_line, true, LV_PART_MAIN);
   lv_obj_set_style_line_color(needle_line, COLOR_WHITE, LV_PART_MAIN);
+  lv_obj_set_style_outline_pad(needle_line, 50, LV_PART_MAIN);
 
-  speed_overlay = lv_obj_create(parent);
-  lv_obj_set_size(speed_overlay, 205, 205);
-  lv_obj_center(speed_overlay);
-  lv_obj_set_style_radius(speed_overlay, LV_RADIUS_CIRCLE, 0);
-  lv_obj_set_style_bg_color(speed_overlay, lv_color_make(150, 150, 150), 0);
-  lv_obj_set_style_bg_opa(speed_overlay, LV_OPA_COVER, 0);
-  lv_obj_set_style_border_width(speed_overlay, 0, 0);
-  lv_obj_set_style_border_color(speed_overlay, lv_color_black(), 0);
-  lv_obj_set_style_pad_all(speed_overlay, 0, 0);
-  lv_obj_set_scrollbar_mode(speed_overlay, LV_SCROLLBAR_MODE_OFF);
+  // speed_overlay = lv_obj_create(parent);
+  // lv_obj_set_size(speed_overlay, 205, 205);
+  // lv_obj_center(speed_overlay);
+  // lv_obj_set_style_radius(speed_overlay, LV_RADIUS_CIRCLE, 0);
+  // lv_obj_set_style_bg_color(speed_overlay, lv_color_make(150, 150, 150), 0);
+  // lv_obj_set_style_bg_opa(speed_overlay, LV_OPA_COVER, 0);
+  // lv_obj_set_style_border_width(speed_overlay, 0, 0);
+  // lv_obj_set_style_border_color(speed_overlay, lv_color_black(), 0);
+  // lv_obj_set_style_pad_all(speed_overlay, 0, 0);
+  // lv_obj_set_scrollbar_mode(speed_overlay, LV_SCROLLBAR_MODE_OFF);
 
   speed_label = lv_label_create(speed_overlay);
   lv_obj_set_style_text_font(speed_label, FONT_XL, 0);

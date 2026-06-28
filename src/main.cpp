@@ -38,6 +38,8 @@
 #define LCD_BIT_PER_PIXEL 16
 #define LVGL_BUF_LINES 80  // Number of lines per draw buffer
 
+#define MADCTL 0x36
+
 // --- Globals ---
 static esp_lcd_panel_handle_t panel_handle = NULL;
 static lv_display_t* lvgl_display = NULL;
@@ -202,7 +204,7 @@ static void lcd_init(void) {
   // Configure ST77916 panel
   esp_lcd_panel_dev_config_t panel_config = {};
   panel_config.reset_gpio_num = -1;  // Already reset manually above
-  panel_config.rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR;
+  panel_config.rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB;
   panel_config.bits_per_pixel = LCD_BIT_PER_PIXEL;
   panel_config.vendor_config = &vendor_config;
 

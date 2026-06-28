@@ -10,6 +10,7 @@
 
 /* Color depth: 16-bit RGB565 */
 #define LV_COLOR_DEPTH 16
+#define LV_COLOR_16_SWAP 1
 
 /* Disable ARM assembly optimizations (not compatible with Xtensa/ESP32) */
 #define LV_DRAW_SW_ASM LV_DRAW_SW_ASM_NONE
