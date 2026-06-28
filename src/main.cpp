@@ -367,11 +367,14 @@ void setup() {
 void loop() {
   button_update();
   obd2_update();
-  imu_update();
+
+  if (screen_manager_current() == SCREEN_PERFORMANCE)
+    imu_update();
+
   rtc_update();
   screen_manager_update();
   // audio_player_loop();
   lv_timer_handler();
 
-  delay(1);
+  // delay(1);
 }

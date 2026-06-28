@@ -22,17 +22,7 @@ static void set_needle_line_value(int32_t v) {
   lv_scale_set_line_needle_value(gauge, needle_line, 90, v);
 }
 
-static void apply_screen_empty_background(lv_obj_t* parent) {
-  // Create full-screen background image
-  lv_obj_t* bg_img = lv_image_create(parent);
-  lv_image_set_src(bg_img, &back);
-  lv_obj_set_size(bg_img, DISPLAY_SIZE, DISPLAY_SIZE);
-  lv_obj_center(bg_img);
-}
-
 void screen_practice_create(lv_obj_t* parent) {
-  // apply_screen_empty_background(parent);
-
   gauge = lv_scale_create(parent);
   lv_obj_set_size(gauge, 360, 360);
   lv_scale_set_mode(gauge, LV_SCALE_MODE_ROUND_INNER);
@@ -73,8 +63,6 @@ void screen_practice_create(lv_obj_t* parent) {
   lv_label_set_text(speed_label, "0");
   lv_obj_center(speed_label);
 
-  demo_speed = 0;
-  demo_dir = 1;
   last_update_ms = millis();
   set_needle_line_value(demo_speed);
 }
@@ -84,11 +72,11 @@ void screen_practice_update(void) {
     return;
 
   uint32_t now = millis();
-  if (now - last_update_ms < 40)
+  if (now - last_update_ms < 1)
     return;
   last_update_ms = now;
 
-  demo_speed += (demo_dir * 2);
+  demo_speed += (demo_dir);
   if (demo_speed >= 260) {
     demo_speed = 260;
     demo_dir = -1;

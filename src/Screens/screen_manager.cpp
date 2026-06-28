@@ -26,7 +26,7 @@ static const Screen screens[SCREEN_COUNT] = {
 };
 
 // --- State ---
-static ScreenID current_screen = SCREEN_WATCHFACE;
+static ScreenID current_screen = SCREEN_EMPTY;
 static lv_obj_t* screen_obj = NULL;
 
 // --- Helper: add title label from registry name ---
@@ -81,10 +81,10 @@ void screen_manager_init(void) {
   screen_obj = lv_obj_create(NULL);
   lv_obj_set_style_bg_color(screen_obj, COLOR_BLACK, 0);
   lv_obj_set_scrollbar_mode(screen_obj, LV_SCROLLBAR_MODE_OFF);
-  add_screen_title(screen_obj, screens[SCREEN_WATCHFACE].name);
-  screens[SCREEN_WATCHFACE].create(screen_obj);
+  add_screen_title(screen_obj, screens[SCREEN_EMPTY].name);
+  screens[SCREEN_EMPTY].create(screen_obj);
   lv_screen_load(screen_obj);
-  current_screen = SCREEN_WATCHFACE;
+  current_screen = SCREEN_EMPTY;
   Serial.println("Screen manager initialized");
 }
 
